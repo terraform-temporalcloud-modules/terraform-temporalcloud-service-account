@@ -67,3 +67,24 @@ output "apikey_token" {
   value       = try(temporalcloud_apikey.this[0].token, "")
   sensitive   = true
 }
+
+output "apikey_ids" {
+  description = "The unique identifiers of the `apikeys` entries, keyed by entry name. Empty when none were created"
+  value       = { for k, v in temporalcloud_apikey.keys : k => v.id }
+}
+
+output "apikey_display_names" {
+  description = "The display names of the `apikeys` entries, keyed by entry name"
+  value       = { for k, v in temporalcloud_apikey.keys : k => v.display_name }
+}
+
+output "apikey_states" {
+  description = "The states of the `apikeys` entries as reported by Temporal Cloud, keyed by entry name"
+  value       = { for k, v in temporalcloud_apikey.keys : k => v.state }
+}
+
+output "apikey_tokens" {
+  description = "The tokens of the `apikeys` entries, keyed by entry name. Returned only when each key is created and stored in Terraform state, so treat the state as a secret"
+  value       = { for k, v in temporalcloud_apikey.keys : k => v.token }
+  sensitive   = true
+}

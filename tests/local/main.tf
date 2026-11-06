@@ -58,6 +58,19 @@ module "all_inputs" {
     create = "10m"
     delete = "10m"
   }
+
+  apikeys = {
+    current = {
+      display_name = "yulei-tflocal-current"
+      description  = "Local regression coverage"
+      expiry_time  = "2027-01-01T00:00:00Z"
+      disabled     = false
+    }
+    next = {
+      display_name = "yulei-tflocal-next"
+      expiry_time  = "2027-06-01T00:00:00Z"
+    }
+  }
 }
 
 # The other access model: confined to a single namespace, no account-level role.
@@ -98,6 +111,13 @@ module "wrapper" {
 
   defaults = {
     account_access = "read"
+
+    apikeys = {
+      current = {
+        display_name = "yulei-tflocal-wrapper-current"
+        expiry_time  = "2027-01-01T00:00:00Z"
+      }
+    }
   }
 
   items = {
@@ -108,6 +128,7 @@ module "wrapper" {
       create_apikey       = true
       apikey_display_name = "yulei-tflocal-workers-key"
       apikey_expiry_time  = "2027-01-01T00:00:00Z"
+      apikeys             = {}
     }
   }
 }

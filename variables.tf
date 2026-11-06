@@ -111,7 +111,7 @@ variable "timeouts" {
 ################################################################################
 
 variable "create_apikey" {
-  description = "Controls if an API key should be issued for the service account. Setting it to `true` makes `apikey_display_name` and `apikey_expiry_time` required. Has no effect when `create_service_account` is `false`, since the key needs an owner"
+  description = "Controls the single API key configured with the `apikey_*` inputs. Does not affect `apikeys` entries. Setting it to `true` makes `apikey_display_name` and `apikey_expiry_time` required. Has no effect when `create_service_account` is `false`, since the key needs an owner"
   type        = bool
   default     = false
 }
@@ -149,10 +149,34 @@ variable "apikey_disabled" {
 }
 
 variable "apikey_timeouts" {
-  description = "Create and delete timeouts for the API key, as duration strings such as `30s` or `2h45m`. Optional; the provider's own defaults apply to whichever is unset"
+  description = "Create and delete timeouts for the single API key and every `apikeys` entry, as duration strings such as `30s` or `2h45m`. Optional; the provider's own defaults apply to whichever is unset"
   type = object({
     create = optional(string)
     delete = optional(string)
   })
   default = {}
+}
+
+variable "apikeys" {
+  description = "Additional API keys for the service account, keyed by a stable name such as `current` and `next`. Each entry needs a `display_name` and an `expiry_time` in UTC with whole seconds, such as `2027-01-01T00:00:00Z`; the provider rewrites other RFC 3339 forms, which causes apply errors or replacement plans. `description` and `disabled` are optional. Map keys must be known at plan time. To rotate without downtime, add an entry, move clients to it, then remove the old entry. Changing `expiry_time` on an entry replaces that key, so rotate by adding a new entry instead. Independent of `create_apikey`, and has no effect when `create_service_account` is `false`. Map entries use `apikey_timeouts`"
+  type = map(object({
+    display_name = string
+    description  = optional(string)
+    expiry_time  = string
+    disabled     = optional(bool, false)
+  }))
+  default  = {}
+  nullable = false
+
+  validation {
+    condition     = try(alltrue([for k, v in var.apikeys : v != null && v.display_name != null && v.display_name != ""]), true)
+    error_message = "Each apikeys entry must be an object with a non-empty display_name."
+  }
+
+  # formatdate() parses RFC 3339 and nothing else. Unlike apikey_expiry_time there
+  # is no empty-string exception: every entry explicitly requests a key.
+  validation {
+    condition     = try(alltrue([for k, v in var.apikeys : can(formatdate("YYYY-MM-DD", v.expiry_time))]), true)
+    error_message = "Each apikeys entry's expiry_time must be an RFC 3339 timestamp, for example 2027-01-01T00:00:00Z."
+  }
 }

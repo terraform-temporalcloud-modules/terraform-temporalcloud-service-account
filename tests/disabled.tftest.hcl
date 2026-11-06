@@ -20,6 +20,14 @@ run "creates_nothing" {
     create_apikey       = true
     apikey_display_name = "should-not-be-created"
     apikey_expiry_time  = "2027-01-01T00:00:00Z"
+
+    // Also set, and must also produce nothing: map entries need the same owner.
+    apikeys = {
+      current = {
+        display_name = "should-not-be-created"
+        expiry_time  = "2027-01-01T00:00:00Z"
+      }
+    }
   }
 
   // Every output is count-gated behind try(); these assertions prove the
@@ -74,5 +82,10 @@ run "creates_nothing" {
   assert {
     condition     = output.apikey_token == ""
     error_message = "apikey_token should fall back to empty"
+  }
+
+  assert {
+    condition     = length(output.apikey_ids) == 0 && length(output.apikey_display_names) == 0 && length(output.apikey_states) == 0 && length(output.apikey_tokens) == 0
+    error_message = "apikeys entries were created without a service account to own them"
   }
 }

@@ -124,9 +124,14 @@ Provider and Temporal Cloud behaviours worth knowing before you plan:
   before applying.
 - **Empty sets are rejected.** Omit `namespace_accesses` and `account_access_custom_roles` rather than
   passing `[]`.
-- **Rotating a key means replacing it.** There is no in-place rotation. Issue the replacement, move
-  clients over, then remove the old one — a second module instance, or a second `temporalcloud_apikey`
-  resource, is the usual way to overlap the two.
+- **Rotating a key means replacing it.** There is no in-place rotation. Use `apikeys` to overlap two
+  keys on the same service account: add a `next` entry, apply, move clients to it, then remove the old
+  entry and apply again. Changing `expiry_time` on an entry replaces that key, so add a new entry rather
+  than editing one. A second module instance creates another service account, not another key.
+- **Rotating an existing single key.** Keep `create_apikey = true`, add an `apikeys.next` entry, and
+  apply. Move clients to `apikey_tokens["next"]`, then set `create_apikey = false` and apply. The
+  singular `apikey_*` outputs describe only the single key; the plural ones describe only `apikeys`
+  entries.
 - **`apikey_disabled = true` blocks authentication without deleting the key.** The key keeps its
   identity and can be re-enabled, which makes it the safe way to test a revocation.
 
@@ -237,6 +242,7 @@ No modules.
 
 | Name | Type |
 | ---- | ---- |
+| [temporalcloud_apikey.keys](https://registry.terraform.io/providers/temporalio/temporalcloud/latest/docs/resources/apikey) | resource |
 | [temporalcloud_apikey.this](https://registry.terraform.io/providers/temporalio/temporalcloud/latest/docs/resources/apikey) | resource |
 | [temporalcloud_service_account.this](https://registry.terraform.io/providers/temporalio/temporalcloud/latest/docs/resources/service_account) | resource |
 
@@ -250,8 +256,9 @@ No modules.
 | <a name="input_apikey_disabled"></a> [apikey\_disabled](#input\_apikey\_disabled) | Disables the API key without deleting it. Optional; the key is created enabled when unset. A disabled key is rejected at authentication but keeps its identity, so it can be re-enabled | `bool` | `null` | no |
 | <a name="input_apikey_display_name"></a> [apikey\_display\_name](#input\_apikey\_display\_name) | Display name of the API key, shown in the Temporal Cloud UI. Required when `create_apikey` is `true`; the empty default is sent as an empty display name and nothing rejects it before apply | `string` | `""` | no |
 | <a name="input_apikey_expiry_time"></a> [apikey\_expiry\_time](#input\_apikey\_expiry\_time) | When the API key expires, as an RFC 3339 timestamp such as `2027-01-01T00:00:00Z`. Required when `create_apikey` is `true`; there is no default expiry, and the empty default fails the apply with `Invalid ExpiryTime`. Use a fixed timestamp: an expression derived from `timestamp()` changes on every plan and replaces the key, invalidating credentials already in use | `string` | `""` | no |
-| <a name="input_apikey_timeouts"></a> [apikey\_timeouts](#input\_apikey\_timeouts) | Create and delete timeouts for the API key, as duration strings such as `30s` or `2h45m`. Optional; the provider's own defaults apply to whichever is unset | <pre>object({<br/>    create = optional(string)<br/>    delete = optional(string)<br/>  })</pre> | `{}` | no |
-| <a name="input_create_apikey"></a> [create\_apikey](#input\_create\_apikey) | Controls if an API key should be issued for the service account. Setting it to `true` makes `apikey_display_name` and `apikey_expiry_time` required. Has no effect when `create_service_account` is `false`, since the key needs an owner | `bool` | `false` | no |
+| <a name="input_apikey_timeouts"></a> [apikey\_timeouts](#input\_apikey\_timeouts) | Create and delete timeouts for the single API key and every `apikeys` entry, as duration strings such as `30s` or `2h45m`. Optional; the provider's own defaults apply to whichever is unset | <pre>object({<br/>    create = optional(string)<br/>    delete = optional(string)<br/>  })</pre> | `{}` | no |
+| <a name="input_apikeys"></a> [apikeys](#input\_apikeys) | Additional API keys for the service account, keyed by a stable name such as `current` and `next`. Each entry needs a `display_name` and an `expiry_time` in UTC with whole seconds, such as `2027-01-01T00:00:00Z`; the provider rewrites other RFC 3339 forms, which causes apply errors or replacement plans. `description` and `disabled` are optional. Map keys must be known at plan time. To rotate without downtime, add an entry, move clients to it, then remove the old entry. Changing `expiry_time` on an entry replaces that key, so rotate by adding a new entry instead. Independent of `create_apikey`, and has no effect when `create_service_account` is `false`. Map entries use `apikey_timeouts` | <pre>map(object({<br/>    display_name = string<br/>    description  = optional(string)<br/>    expiry_time  = string<br/>    disabled     = optional(bool, false)<br/>  }))</pre> | `{}` | no |
+| <a name="input_create_apikey"></a> [create\_apikey](#input\_create\_apikey) | Controls the single API key configured with the `apikey_*` inputs. Does not affect `apikeys` entries. Setting it to `true` makes `apikey_display_name` and `apikey_expiry_time` required. Has no effect when `create_service_account` is `false`, since the key needs an owner | `bool` | `false` | no |
 | <a name="input_create_service_account"></a> [create\_service\_account](#input\_create\_service\_account) | Controls if the service account should be created. Set to `false` to disable the module without removing the call | `bool` | `true` | no |
 | <a name="input_description"></a> [description](#input\_description) | Description of the service account, shown alongside it in the Temporal Cloud UI. Optional; the service account is created without one when unset | `string` | `null` | no |
 | <a name="input_name"></a> [name](#input\_name) | The name of the service account. Pass `""` when `create_service_account` is `false` | `string` | n/a | yes |
@@ -264,9 +271,13 @@ No modules.
 | Name | Description |
 | ---- | ----------- |
 | <a name="output_apikey_display_name"></a> [apikey\_display\_name](#output\_apikey\_display\_name) | The display name of the API key |
+| <a name="output_apikey_display_names"></a> [apikey\_display\_names](#output\_apikey\_display\_names) | The display names of the `apikeys` entries, keyed by entry name |
 | <a name="output_apikey_id"></a> [apikey\_id](#output\_apikey\_id) | The unique identifier of the API key. Empty when no key was created |
+| <a name="output_apikey_ids"></a> [apikey\_ids](#output\_apikey\_ids) | The unique identifiers of the `apikeys` entries, keyed by entry name. Empty when none were created |
 | <a name="output_apikey_state"></a> [apikey\_state](#output\_apikey\_state) | The current state of the API key as reported by Temporal Cloud |
+| <a name="output_apikey_states"></a> [apikey\_states](#output\_apikey\_states) | The states of the `apikeys` entries as reported by Temporal Cloud, keyed by entry name |
 | <a name="output_apikey_token"></a> [apikey\_token](#output\_apikey\_token) | The API key token, the credential a client authenticates with. Returned only when the key is created and stored in Terraform state, so treat the state as a secret. Read it with `terraform output -raw apikey_token` |
+| <a name="output_apikey_tokens"></a> [apikey\_tokens](#output\_apikey\_tokens) | The tokens of the `apikeys` entries, keyed by entry name. Returned only when each key is created and stored in Terraform state, so treat the state as a secret |
 | <a name="output_service_account_account_access"></a> [service\_account\_account\_access](#output\_service\_account\_account\_access) | The account-level role held by the service account. Empty for a namespace-scoped service account |
 | <a name="output_service_account_id"></a> [service\_account\_id](#output\_service\_account\_id) | The unique identifier of the service account. This is the value to pass as `owner_id` when issuing API keys for it elsewhere |
 | <a name="output_service_account_name"></a> [service\_account\_name](#output\_service\_account\_name) | The name of the service account |

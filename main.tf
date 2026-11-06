@@ -70,3 +70,36 @@ resource "temporalcloud_apikey" "this" {
     }
   }
 }
+
+################################################################################
+# Additional API keys
+#
+# One resource per entry, keyed by name, so adding or removing a key does not
+# disturb the state addresses of the others. That is what makes rotation with an
+# overlap possible: add `next`, move clients, remove `current`.
+#
+# Independent of `create_apikey` and the single key above. `expiry_time` forces
+# replacement in the provider, so rotation adds a new entry rather than editing
+# an existing one.
+################################################################################
+
+resource "temporalcloud_apikey" "keys" {
+  for_each = local.create_service_account ? var.apikeys : {}
+
+  owner_id   = temporalcloud_service_account.this[0].id
+  owner_type = "service-account"
+
+  display_name = each.value.display_name
+  description  = each.value.description
+  expiry_time  = each.value.expiry_time
+  disabled     = each.value.disabled
+
+  dynamic "timeouts" {
+    for_each = length([for v in var.apikey_timeouts : v if v != null]) > 0 ? [var.apikey_timeouts] : []
+
+    content {
+      create = timeouts.value.create
+      delete = timeouts.value.delete
+    }
+  }
+}

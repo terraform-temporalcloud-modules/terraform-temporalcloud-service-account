@@ -14,6 +14,10 @@ output "all_inputs" {
     apikey_display_name                     = module.all_inputs.apikey_display_name
     apikey_state                            = module.all_inputs.apikey_state
     apikey_token                            = module.all_inputs.apikey_token
+    apikey_ids                              = module.all_inputs.apikey_ids
+    apikey_display_names                    = module.all_inputs.apikey_display_names
+    apikey_states                           = module.all_inputs.apikey_states
+    apikey_tokens                           = module.all_inputs.apikey_tokens
   }
   # apikey_token is sensitive, which propagates to the whole object.
   sensitive = true

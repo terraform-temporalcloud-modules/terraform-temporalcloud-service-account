@@ -19,3 +19,8 @@ output "available_regions" {
   description = "Every region this account may use. Surfaced so a test run documents the account's actual entitlements, which differ from the published region list"
   value       = local.region_ids
 }
+
+output "apikey_expiry_time" {
+  description = "An API key expiry 30 days after setup, in UTC with whole seconds, so apply tests never use a date that has passed"
+  value       = timeadd(timestamp(), "720h")
+}

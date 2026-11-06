@@ -19,7 +19,9 @@ way to catch the API rejecting a configuration that type-checks.
 | `service_account.tftest.hcl` | Create with an account-level role and timeouts; update in place to add `namespace_accesses` and issue an API key; update again to narrow both roles and disable the key |
 | `namespace_scoped.tftest.hcl` | `namespace_scoped_access` with an API key, asserting no account-level role comes back; then narrowing the permission in place |
 | `wrappers.tftest.hcl` | The `wrappers` submodule: two service accounts from one call, with per-item overrides and a per-item API key |
-| `disabled.tftest.hcl` | `create_service_account = false` creates nothing — including no API key, despite `create_apikey = true` — and every output falls back |
+| `disabled.tftest.hcl` | `create_service_account = false` creates nothing — including no API key, despite `create_apikey = true` and a non-empty `apikeys` — and every output falls back |
+| `apikeys.tftest.hcl` | Rotation with the `apikeys` map: `{current}`, then `{current, next}`, then `{next}`, asserting the service account and the surviving key keep their IDs and tokens; the single-key interface alongside the map in the middle step. Expiry comes from `setup/`, 30 days ahead, so the dates never pass |
+| `apikeys_validation.tftest.hcl` | Plan-only: a null entry, an empty `display_name`, and a non-RFC 3339 `expiry_time` are each rejected by the `apikeys` validations |
 
 Fixtures: `setup/` generates a unique name and, when asked, creates the namespace
 that `namespace_accesses` and `namespace_scoped_access` point at. Both take a real

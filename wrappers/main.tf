@@ -10,6 +10,7 @@ module "wrapper" {
   apikey_display_name         = try(each.value.apikey_display_name, var.defaults.apikey_display_name, "")
   apikey_expiry_time          = try(each.value.apikey_expiry_time, var.defaults.apikey_expiry_time, "")
   apikey_timeouts             = try(each.value.apikey_timeouts, var.defaults.apikey_timeouts, {})
+  apikeys                     = try(each.value.apikeys, var.defaults.apikeys, {})
   create_apikey               = try(each.value.create_apikey, var.defaults.create_apikey, false)
   create_service_account      = try(each.value.create_service_account, var.defaults.create_service_account, true)
   description                 = try(each.value.description, var.defaults.description, null)
